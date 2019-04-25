@@ -13,6 +13,8 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    printf("mjp_t size %d, (mjp_dt_t %d)", sizeof(mjp_t), sizeof(mjp_dt_t));
+
     /* parse */
     mjp_start();
     while ((dt = getc(pfile)) != EOF) {

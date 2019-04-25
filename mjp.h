@@ -31,10 +31,10 @@ enum {
 typedef int mjp_dt_t;
 
 typedef struct {
-    uint8_t buf[9];
+    uint8_t buf[5];
     uint8_t cnt;
     uint8_t max;
-    mjp_dt_t val;
+    uint8_t rfu;
 } mjp_oft_t;
 
 /* call back function: */
@@ -46,19 +46,24 @@ typedef struct {
     mjp_dt_t ofile_addr;
     mjp_dt_t pfile_addr;
     mjp_dt_t dfile_addr;
-    mjp_oft_t oft;
-    int last_dt;
-    int cmd;
-    int cnt;
-    struct {
-        mjp_dt_t addr;
-        uint8_t buf[MJP_WR_BUF_SIZE];
-        int cnt;
-    } wr;
+    mjp_dt_t cnt;
+
+    int16_t last_dt;
+    int16_t cmd;
 
     mjp_des_wr_t des_wr_cb;
     mjp_org_rd_t org_rd_cb;
     mjp_copy_t copy_cb;
+
+    mjp_oft_t oft;
+
+#ifdef MJP_WR_BUF_SIZE
+    struct {
+        mjp_dt_t addr;
+        int cnt;
+        uint8_t buf[MJP_WR_BUF_SIZE];
+    } wr;
+#endif
 } mjp_t;
 
 /* start and reset mjp global variables */
