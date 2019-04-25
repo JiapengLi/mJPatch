@@ -10,6 +10,15 @@
 #define MJP_EOF         (-1)
 #endif
 
+#define MJP_WR_BUF_SIZE         (32)
+
+enum {
+    MJP_ERR_FORMAT      = -1,
+    MJP_ERR_BKT_OFT     = -2,
+    MJP_ERR_EQL_OFT     = -3,
+    MJP_ERR_DEL_OFT     = -4,
+};
+
 enum {
     MJP_BKT = 0xA2,
     MJP_EQL = 0xA3,
@@ -28,6 +37,11 @@ typedef struct {
     mjp_dt_t val;
 } mjp_oft_t;
 
+/* call back function: */
+typedef int (*mjp_des_wr_t)(int addr, uint8_t *buf, int len);
+typedef int (*mjp_org_rd_t)(int addr);
+typedef int (*mjp_copy_t)(int des, int src, int len);
+
 typedef struct {
     mjp_dt_t ofile_addr;
     mjp_dt_t pfile_addr;
@@ -36,13 +50,25 @@ typedef struct {
     int last_dt;
     int cmd;
     int cnt;
-    int sta;
+    struct {
+        mjp_dt_t addr;
+        uint8_t buf[MJP_WR_BUF_SIZE];
+        int cnt;
+    } wr;
+
+    mjp_des_wr_t des_wr_cb;
+    mjp_org_rd_t org_rd_cb;
+    mjp_copy_t copy_cb;
 } mjp_t;
 
+/* start and reset mjp global variables */
 int mjp_start(void);
-int mjp_restore(int dt);
-int mjp_done(void);
 
+/* apply patch file to old file and generate new file */
+int mjp_apply(int dt);
+int mjp_apply_done(void);
+
+/* parse and log the patch file */
 int mjp_parse(int dt);
 int mjp_parse_done(void);
 

@@ -1,8 +1,8 @@
 # mJPatch
 
-Embedded JojoPatch library. This library should work with [JojoDiff -  diff utility for binary files](<http://jojodiff.sourceforge.net/>).
+**Embedded JojoPatch library**. This library should work with [JojoDiff -  diff utility for binary files](<http://jojodiff.sourceforge.net/>).
 
-The library is inspired by [JAPatch](<https://github.com/janjongboom/janpatch>), the goal of this library is to rewrite JAPatch to decouple the dependency of file management APIs to make the library could work with MCU easily no mater it supports file system or not. 
+mJPatch is inspired by [JAPatch](<https://github.com/janjongboom/janpatch>), the goal is to rewrite JAPatch and decouple the dependencies of file management APIs to make the library could work with MCU easily no mater it supports file system or not.
 
 ## Features
 
@@ -11,6 +11,7 @@ The library is inspired by [JAPatch](<https://github.com/janjongboom/janpatch>),
 - Simplify patch file data feeding, make it a single access point, do not call `getc` everywhere.
 - Be friendly to MCU development
 - Minimize RAM and ROM cost
+- User defined write buffer size, minimum zero. (Buffer could help to decrease write flash times to improve performance)
 
 ## JojoDiff Patch File Structure
 

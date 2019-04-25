@@ -124,6 +124,111 @@ int mjp_start(void)
     return 0;
 }
 
+void mjp_flush(void)
+{
+    if (mjp.wr.cnt != 0) {
+        if (mjp.des_wr_cb != NULL) {
+            mjp.des_wr_cb(mjp.wr.addr - mjp.wr.cnt, mjp.wr.buf, mjp.wr.cnt);
+        }
+    }
+}
+
+void mjp_write(mjp_dt_t addr, int dt)
+{
+    /* set to buffer */
+    mjp.wr.buf[mjp.wr.cnt++] = dt;
+    mjp.wr.addr = addr;
+    if (mjp.wr.cnt >= MJP_WR_BUF_SIZE) {
+        mjp_flush();
+        mjp.wr.cnt = 0;
+    }
+}
+
+int mjp_read(mjp_dt_t addr)
+{
+    if (mjp.org_rd_cb != NULL) {
+        return mjp.org_rd_cb(addr);
+    }
+    return 0;
+}
+
+int mjp_apply(int dt)
+{
+    if ((mjp.last_dt == ESC) && (mjp_is_cmd(dt))) {
+        /* switch to new cmd mode */
+        mjp.cmd = dt;
+        mjp.last_dt = MJP_EOF;
+        //mjp.cnt = 0;
+        mjp.oft.cnt = 0;
+        mjp.oft.max = 0;
+        mjp.oft.val = 0;
+    } else {
+        if ((dt != ESC) || (mjp.last_dt == ESC)) {
+            //mjp.cnt++;
+            switch (mjp.cmd) {
+            case MOD:
+                mjp_write(mjp.dfile_addr, dt);
+                mjp.dfile_addr++;
+                mjp.ofile_addr++;
+                break;
+            case INS:
+                mjp_write(mjp.dfile_addr, dt);
+                mjp.dfile_addr++;
+                break;
+            case DEL:
+                if (mjp_parse_oft(&mjp.oft, dt) < 0) {
+                    return MJP_ERR_DEL_OFT;
+                }
+                if (mjp.oft.val != 0) {
+                    mjp.ofile_addr += mjp.oft.val;
+                }
+                break;
+            case EQL:
+                if (mjp_parse_oft(&mjp.oft, dt) < 0) {
+                    return MJP_ERR_EQL_OFT;
+                }
+                if (mjp.oft.val != 0) {
+                    if (mjp.copy_cb != NULL) {
+                        mjp_flush();
+                        mjp.copy_cb(mjp.dfile_addr, mjp.ofile_addr, mjp.oft.val);
+                        mjp.dfile_addr += mjp.oft.val;
+                        mjp.ofile_addr += mjp.oft.val;
+                    } else {
+                        int i;
+                        for (i = 0; i < mjp.oft.val; i++) {
+                            mjp_write(mjp.dfile_addr, mjp_read(mjp.ofile_addr));
+                            mjp.dfile_addr++;
+                            mjp.ofile_addr++;
+                        }
+                    }
+                }
+                break;
+            case BKT:
+                if (mjp_parse_oft(&mjp.oft, dt) < 0) {
+                    return MJP_ERR_BKT_OFT;
+                }
+                if (mjp.oft.val != 0) {
+                    mjp.ofile_addr -= mjp.oft.val;
+                }
+                break;
+            default:
+                return MJP_ERR_FORMAT;
+            }
+            /* set ch to EOF after ch is processed */
+            dt = MJP_EOF;
+        }
+        mjp.last_dt = dt;
+    }
+    mjp.pfile_addr++;
+    return 0;
+}
+
+int mjp_apply_done(void)
+{
+    mjp_flush();
+    return 0;
+}
+
 int mjp_parse(int dt)
 {
     if ((mjp.last_dt == ESC) && (mjp_is_cmd(dt))) {
@@ -165,7 +270,6 @@ int mjp_parse(int dt)
                 }
                 if (mjp.oft.val != 0) {
                     mjp_log_cmd(mjp.cmd, mjp.ofile_addr, mjp.dfile_addr, mjp.oft.val);
-//                    printf("(DEL ORGADDR %d, %dB)", mjp.ofile_addr, mjp.oft.val);
                     mjp.ofile_addr += mjp.oft.val;
                 }
                 break;
@@ -210,6 +314,4 @@ int mjp_parse_done(void)
     printf("Original file size: %d (used)\n", mjp.ofile_addr);
     return 0;
 }
-
-
 

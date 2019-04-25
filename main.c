@@ -13,13 +13,20 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    /* parse */
     mjp_start();
     while ((dt = getc(pfile)) != EOF) {
         mjp_parse(dt);
     }
     mjp_parse_done();
 
-
+    /* TODO: set call back */
+    /* apply patch and restore */
+    mjp_start();
+    while ((dt = getc(pfile)) != EOF) {
+        mjp_apply(dt);
+    }
+    mjp_apply_done();
 
     fclose(pfile);
 
