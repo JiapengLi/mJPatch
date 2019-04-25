@@ -10,7 +10,7 @@
 #define MOD     MJP_MOD
 #define ESC     MJP_ESC
 
-const char *jpatch_str_tab[6] = {
+static const char *mjp_str_tab[6] = {
     "BKT",
     "EQL",
     "DEL",
@@ -85,29 +85,29 @@ static mjp_dt_t mjp_parse_oft(mjp_oft_t *oft, int ch)
     return 0;
 }
 
-void mjp_log_cmd(int cmd, mjp_dt_t org, mjp_dt_t des, mjp_dt_t len)
+static void mjp_log_cmd(int cmd, mjp_dt_t org, mjp_dt_t des, mjp_dt_t len)
 {
     printf("\n");
     switch (mjp.cmd) {
     case MOD:
         printf("%s: Modify from %d(O) %d(D) for %d bytes",
-               jpatch_str_tab[cmd - BKT], org, des, len);
+               mjp_str_tab[cmd - BKT], org, des, len);
         break;
     case INS:
         printf("%s: Insert from %d(D) for %d bytes",
-               jpatch_str_tab[cmd - BKT], des, len);
+               mjp_str_tab[cmd - BKT], des, len);
         break;
     case DEL:
         printf("%s: Delete from %d(O) for %d bytes",
-               jpatch_str_tab[cmd - BKT], org, len);
+               mjp_str_tab[cmd - BKT], org, len);
         break;
     case EQL:
         printf("%s: Copy from %d(O) to %d(D) for %d bytes",
-               jpatch_str_tab[cmd - BKT], org, des, len);
+               mjp_str_tab[cmd - BKT], org, des, len);
         break;
     case BKT:
         printf("%s: Backtrace from %d(O) to %d(O), offset %d",
-               jpatch_str_tab[cmd - BKT], org, org - len, len);
+               mjp_str_tab[cmd - BKT], org, org - len, len);
         break;
     default:
         printf("ERROR");
@@ -139,7 +139,7 @@ int mjp_parse(int dt)
         mjp.oft.val = 0;
         printf("\n %6d | %s %02X %02X ",
                mjp.pfile_addr - 1,
-               jpatch_str_tab[dt - BKT],
+               mjp_str_tab[dt - BKT],
                ESC,
                dt);
     } else {
