@@ -154,11 +154,14 @@ static int mjp_read(mjp_dt_t addr)
     return 0;
 }
 
-int mjp_start(void)
+int mjp_start(mjp_des_wr_t des_wr_cb, mjp_org_rd_t org_rd_cb, mjp_copy_t copy_cb)
 {
     memset(&mjp, 0, sizeof(mjp_t));
     mjp.cmd = MJP_EOF;
     mjp.last_dt = MJP_EOF;
+    mjp.des_wr_cb = des_wr_cb;
+    mjp.org_rd_cb = org_rd_cb;
+    mjp.copy_cb = copy_cb;
     return 0;
 }
 

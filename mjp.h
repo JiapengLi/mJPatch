@@ -67,7 +67,7 @@ typedef struct {
 } mjp_t;
 
 /* start and reset mjp global variables */
-int mjp_start(void);
+int mjp_start(mjp_des_wr_t des_wr_cb, mjp_org_rd_t org_rd_cb, mjp_copy_t copy_cb);
 
 /* apply patch file to old file and generate new file */
 int mjp_apply(int dt);
