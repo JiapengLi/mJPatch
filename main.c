@@ -3,14 +3,14 @@
 #include <string.h>
 #include "mjp.h"
 
-FILE *ofile;
-FILE *pfile;
-FILE *dfile;
-
-
+FILE *ofile;    // original file
+FILE *pfile;    // patch file
+FILE *dfile;    // destination file
+FILE *cfile;    // comparison file
 
 int dfile_wr(int addr, uint8_t *buf, int len)
 {
+    /* fwrite increase the file pointer after each write, so addr is useless here */
     fwrite(buf, 1, len, dfile);
     return 0;
 }
@@ -54,11 +54,15 @@ int main(int argc, char **argv)
 
     dfile = fopen(argv[3], "wb");
     if (dfile == NULL) {
-        printf("can't open patch file\n");
+        printf("can't open destination file\n");
         return -1;
     }
 
-    printf("ftell %ld, %ld, %ld\n", ftell(ofile), ftell(pfile), ftell(dfile));
+    cfile = fopen(argv[4], "rb");
+    if (dfile == NULL) {
+        printf("can't open destination file\n");
+        return -1;
+    }
 
     printf("mjp_t size %d, (mjp_dt_t %d)", sizeof(mjp_t), sizeof(mjp_dt_t));
 
@@ -80,6 +84,27 @@ int main(int argc, char **argv)
     fclose(ofile);
     fclose(pfile);
     fclose(dfile);
+
+    /* compare dfile and cfile  */
+    dfile = fopen(argv[3], "rb");
+    if (dfile == NULL) {
+        printf("can't open destination file\n");
+        return -1;
+    }
+
+    while (1) {
+        int c, d;
+        c = getc(cfile);
+        d = getc(dfile);
+        if (c != d) {
+            printf("NG. Destination file and comparison file are not identical\n");
+            return -1;
+        }
+        if (c == EOF) {
+            break;
+        }
+    }
+    printf("OK. Apply patch successfully. Destination file and comparison file are identical\n");
 
     return 0;
 }

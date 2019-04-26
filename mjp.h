@@ -10,7 +10,8 @@
 #define MJP_EOF         (-1)
 #endif
 
-#define MJP_WR_BUF_SIZE         (32)
+/* uncomment to enable buffer for mJPatch library */
+//#define MJP_WR_BUF_SIZE         (32)
 
 enum {
     MJP_ERR_FORMAT      = -1,

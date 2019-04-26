@@ -4,14 +4,16 @@
 
 mJPatch is inspired by [JAPatch](<https://github.com/janjongboom/janpatch>), the goal is to rewrite JAPatch and decouple the dependencies of file management APIs to make the library could work with MCU easily no mater it supports file system or not.
 
+![1556260153820](img/flow.png)
+
 ## Features
 
 - Parse JojoDiff patch file and log it for human reading to understand jojopatch file structure
-
 - Simplify patch file data feeding, make it a single access point, do not call `getc` everywhere.
 - Be friendly to MCU development
 - Minimize RAM and ROM cost
 - User defined write buffer size, minimum zero. (Buffer could help to decrease write flash times to improve performance)
+- JojoDiff and mJPatch library to speed up Delta Firmware Update Over The Air design
 
 ## JojoDiff Patch File Structure
 
@@ -117,6 +119,55 @@ Patch file size: 59
 Destination file size: 512
 Original file size: 512 (used)
 ```
+
+
+
+## How To Use
+
+Compile the library and use to `mjp` to test.
+
+### API
+
+#### `int mjp_start(mjp_des_wr_t, mjp_org_rd_t, mjp_copy_t);`
+
+Initial mjp global object and set call backs.
+
+```
+typedef int (*mjp_des_wr_t)(int addr, uint8_t *buf, int len);
+typedef int (*mjp_org_rd_t)(int addr);
+typedef int (*mjp_copy_t)(int des, int src, int len);
+
+int mjp_start(mjp_des_wr_t des_wr_cb, mjp_org_rd_t org_rd_cb, mjp_copy_t copy_cb);
+
+des_wr_cb: write data block to destination file to a specified addr
+org_rd_cb: read one byte from original file as specified addr
+copy_cb: (optional), copy is used in EQL processing to speed up copy event
+
+```
+
+#### `int mjp_apply(int dt);`
+
+Feed patch data stream one by one, until the last byte.
+
+#### `int mjp_apply_done(void);`
+
+Call after last byte of the patch file is fed to `mjp_apply`. This function will flush write buffer.
+
+#### Example
+
+Check `main.c` for more details.
+
+```
+mjp_start(dfile_wr, ofile_rd, o2d_copy);
+while ((dt = getc(pfile)) != EOF) {
+	mjp_parse(dt);
+}
+mjp_parse_done();
+```
+
+### Parse JojoDiff patch File
+
+`mjp_parse` and `mjp_parse_done` can be use do to parse and log patch file for human reading. Usage is the same as `mjp_apply` and `mjp_apply_done`
 
 ## Reference
 
