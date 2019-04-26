@@ -125,6 +125,7 @@ static void mjp_flush(void)
         if (mjp.des_wr_cb != NULL) {
             mjp.des_wr_cb(mjp.wr.addr + 1 - mjp.wr.cnt, mjp.wr.buf, mjp.wr.cnt);
         }
+        mjp.wr.cnt = 0;
     }
 #endif
 }
@@ -137,7 +138,6 @@ static void mjp_write(mjp_dt_t addr, int dt)
     mjp.wr.addr = addr;
     if (mjp.wr.cnt >= MJP_WR_BUF_SIZE) {
         mjp_flush();
-        mjp.wr.cnt = 0;
     }
 #else
     uint8_t buf[1];

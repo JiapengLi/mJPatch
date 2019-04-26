@@ -10,7 +10,7 @@
 #define MJP_EOF         (-1)
 #endif
 
-//#define MJP_WR_BUF_SIZE         (32)
+#define MJP_WR_BUF_SIZE         (32)
 
 enum {
     MJP_ERR_FORMAT      = -1,
