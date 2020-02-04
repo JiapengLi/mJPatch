@@ -10,15 +10,6 @@
 #define MOD     MJP_MOD
 #define ESC     MJP_ESC
 
-static const char *mjp_str_tab[6] = {
-    "BKT",
-    "EQL",
-    "DEL",
-    "INS",
-    "MOD",
-    "ESC",
-};
-
 static mjp_t mjp;
 
 static bool mjp_is_cmd(int dt)
@@ -85,37 +76,6 @@ static mjp_dt_t mjp_parse_oft(mjp_oft_t *oft, int ch)
         return mjp_get_oft(oft->buf, oft->cnt);
     }
     return 0;
-}
-
-static void mjp_log_cmd(int cmd, mjp_dt_t org, mjp_dt_t des, mjp_dt_t len)
-{
-    printf("\n");
-    switch (mjp.cmd) {
-    case MOD:
-        printf("%s: Modify from %d(O) %d(D) for %d bytes",
-               mjp_str_tab[cmd - BKT], org, des, len);
-        break;
-    case INS:
-        printf("%s: Insert from %d(D) for %d bytes",
-               mjp_str_tab[cmd - BKT], des, len);
-        break;
-    case DEL:
-        printf("%s: Delete from %d(O) for %d bytes",
-               mjp_str_tab[cmd - BKT], org, len);
-        break;
-    case EQL:
-        printf("%s: Copy from %d(O) to %d(D) for %d bytes",
-               mjp_str_tab[cmd - BKT], org, des, len);
-        break;
-    case BKT:
-        printf("%s: Backtrace from %d(O) to %d(O), offset %d",
-               mjp_str_tab[cmd - BKT], org, org - len, len);
-        break;
-    default:
-        printf("ERROR");
-        break;
-    }
-    printf("\n");
 }
 
 static void mjp_flush(void)
@@ -204,7 +164,7 @@ int mjp_apply(int dt)
                 if (val != 0) {
                     if (mjp.copy_cb != NULL) {
                         mjp_flush();
-                        mjp.copy_cb(mjp.dfile_addr, mjp.ofile_addr, val);
+                        mjp.copy_cb(mjp.ofile_addr, mjp.dfile_addr, val);
                         mjp.dfile_addr += val;
                         mjp.ofile_addr += val;
                     } else {
@@ -242,7 +202,49 @@ int mjp_apply(int dt)
 int mjp_apply_done(void)
 {
     mjp_flush();
-    return 0;
+    return mjp.dfile_addr;
+}
+
+/*-----------------------------------------------------------------------------*/
+// mjp API with log
+static const char *mjp_str_tab[6] = {
+    "BKT",
+    "EQL",
+    "DEL",
+    "INS",
+    "MOD",
+    "ESC",
+};
+
+static void mjp_log_cmd(int cmd, mjp_dt_t org, mjp_dt_t des, mjp_dt_t len)
+{
+    printf("\n");
+    switch (mjp.cmd) {
+    case MOD:
+        printf("%s: Modify from %d(O) %d(D) for %d bytes",
+               mjp_str_tab[cmd - BKT], org, des, len);
+        break;
+    case INS:
+        printf("%s: Insert from %d(D) for %d bytes",
+               mjp_str_tab[cmd - BKT], des, len);
+        break;
+    case DEL:
+        printf("%s: Delete from %d(O) for %d bytes",
+               mjp_str_tab[cmd - BKT], org, len);
+        break;
+    case EQL:
+        printf("%s: Copy from %d(O) to %d(D) for %d bytes",
+               mjp_str_tab[cmd - BKT], org, des, len);
+        break;
+    case BKT:
+        printf("%s: Backtrace from %d(O) to %d(O), offset %d",
+               mjp_str_tab[cmd - BKT], org, org - len, len);
+        break;
+    default:
+        printf("ERROR");
+        break;
+    }
+    printf("\n");
 }
 
 int mjp_parse(int dt)

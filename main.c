@@ -23,7 +23,7 @@ int ofile_rd(int addr)
     return buf[0];
 }
 
-int o2d_copy(int desaddr, int srcaddr, int len)
+int o2d_copy(int srcaddr, int desaddr, int len)
 {
     uint8_t *buf;
     buf = malloc(len + 1);

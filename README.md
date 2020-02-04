@@ -135,7 +135,7 @@ Initial mjp global object and set call backs.
 ```
 typedef int (*mjp_des_wr_t)(int addr, uint8_t *buf, int len);
 typedef int (*mjp_org_rd_t)(int addr);
-typedef int (*mjp_copy_t)(int des, int src, int len);
+typedef int (*mjp_copy_t)(int src, int des, int len);
 
 int mjp_start(mjp_des_wr_t des_wr_cb, mjp_org_rd_t org_rd_cb, mjp_copy_t copy_cb);
 

@@ -44,3 +44,5 @@ mintty.exe.stackdump
 bin
 *.diff
 *.log
+samples
+file
