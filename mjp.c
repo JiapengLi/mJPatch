@@ -125,78 +125,100 @@ int mjp_start(mjp_des_wr_t des_wr_cb, mjp_org_rd_t org_rd_cb, mjp_copy_t copy_cb
     return 0;
 }
 
-int mjp_apply(int dt)
+int mjp_apply_feed(int dt)
 {
     mjp_dt_t val;
-    if ((mjp.last_dt == ESC) && (mjp_is_cmd(dt))) {
-        /* switch to new cmd mode */
-        mjp.cmd = dt;
-        mjp.last_dt = MJP_EOF;
-        mjp.cnt = 0;
-        mjp.oft.cnt = 0;
-        mjp.oft.max = 0;
-    } else {
-        if ((dt != ESC) || (mjp.last_dt == ESC)) {
-            switch (mjp.cmd) {
-            case MOD:
-                mjp_write(mjp.dfile_addr, dt);
-                mjp.dfile_addr++;
-                mjp.ofile_addr++;
-                break;
-            case INS:
-                mjp_write(mjp.dfile_addr, dt);
-                mjp.dfile_addr++;
-                break;
-            case DEL:
-                val = mjp_parse_oft(&mjp.oft, dt);
-                if (val < 0) {
-                    return MJP_ERR_DEL_OFT;
+    switch (mjp.cmd) {
+    case MOD:
+        mjp_write(mjp.dfile_addr, dt);
+        mjp.dfile_addr++;
+        mjp.ofile_addr++;
+        break;
+    case INS:
+        mjp_write(mjp.dfile_addr, dt);
+        mjp.dfile_addr++;
+        break;
+    case DEL:
+        val = mjp_parse_oft(&mjp.oft, dt);
+        if (val < 0) {
+            return MJP_ERR_DEL_OFT;
+        }
+        if (val != 0) {
+            mjp.ofile_addr += val;
+            mjp.cmd = MJP_EOF;
+        }
+        break;
+    case EQL:
+        val = mjp_parse_oft(&mjp.oft, dt);
+        if (val < 0) {
+            return MJP_ERR_EQL_OFT;
+        }
+        if (val != 0) {
+            if (mjp.copy_cb != NULL) {
+                mjp_flush();
+                mjp.copy_cb(mjp.ofile_addr, mjp.dfile_addr, val);
+                mjp.dfile_addr += val;
+                mjp.ofile_addr += val;
+            } else {
+                int i;
+                for (i = 0; i < val; i++) {
+                    mjp_write(mjp.dfile_addr, mjp_read(mjp.ofile_addr));
+                    mjp.dfile_addr++;
+                    mjp.ofile_addr++;
                 }
-                if (val != 0) {
-                    mjp.ofile_addr += val;
-                }
-                break;
-            case EQL:
-                val = mjp_parse_oft(&mjp.oft, dt);
-                if (val < 0) {
-                    return MJP_ERR_EQL_OFT;
-                }
-                if (val != 0) {
-                    if (mjp.copy_cb != NULL) {
-                        mjp_flush();
-                        mjp.copy_cb(mjp.ofile_addr, mjp.dfile_addr, val);
-                        mjp.dfile_addr += val;
-                        mjp.ofile_addr += val;
-                    } else {
-                        int i;
-                        for (i = 0; i < val; i++) {
-                            mjp_write(mjp.dfile_addr, mjp_read(mjp.ofile_addr));
-                            mjp.dfile_addr++;
-                            mjp.ofile_addr++;
-                        }
-                    }
-                }
-                break;
-            case BKT:
-                val = mjp_parse_oft(&mjp.oft, dt);
-                if (val < 0) {
-                    return MJP_ERR_BKT_OFT;
-                }
-                if (val != 0) {
-                    mjp.ofile_addr -= val;
-                }
-                break;
-            default:
-                return MJP_ERR_FORMAT;
             }
-            mjp.cnt++;
-            /* set ch to EOF after ch is processed */
-            dt = MJP_EOF;
+            mjp.cmd = MJP_EOF;
+        }
+        break;
+    case BKT:
+        val = mjp_parse_oft(&mjp.oft, dt);
+        if (val < 0) {
+            return MJP_ERR_BKT_OFT;
+        }
+        if (val != 0) {
+            mjp.ofile_addr -= val;
+            mjp.cmd = MJP_EOF;
+        }
+        break;
+    default:
+        return MJP_ERR_FORMAT;
+    }
+    mjp.cnt++;
+    return 0;
+}
+
+int mjp_apply(int dt)
+{
+    int ret = 0;
+
+    if ((mjp.cmd == BKT) || (mjp.cmd == EQL) || (mjp.cmd == DEL)) {
+        ret = mjp_apply_feed(dt);
+        mjp.last_dt = MJP_EOF;
+    } else if (mjp.last_dt == ESC) {
+        if (mjp_is_cmd(dt)) {
+            mjp.cmd = dt;
+            mjp.cnt = 0;
+            mjp.oft.cnt = 0;
+            mjp.oft.max = 0;
+        } else {
+            if (dt == ESC) {
+                ret = mjp_apply_feed(dt);
+            } else {
+                ret = mjp_apply_feed(ESC);
+                ret = mjp_apply_feed(dt);
+            }
+        }
+        mjp.last_dt = MJP_EOF;
+    } else {
+        if (dt != ESC) {
+            ret = mjp_apply_feed(dt);
         }
         mjp.last_dt = dt;
     }
+
     mjp.pfile_addr++;
-    return 0;
+
+    return ret;
 }
 
 int mjp_apply_done(void)
@@ -247,92 +269,116 @@ static void mjp_log_cmd(int cmd, mjp_dt_t org, mjp_dt_t des, mjp_dt_t len)
     printf("\n");
 }
 
-int mjp_parse(int dt)
+int mjp_parse_feed(int dt)
 {
     mjp_dt_t val;
-    if ((mjp.last_dt == ESC) && (mjp_is_cmd(dt))) {
-        /* switch to new cmd mode */
-        if ((mjp.cmd == MOD) ||(mjp.cmd == INS)) {
-            mjp_log_cmd(mjp.cmd, mjp.ofile_addr - mjp.cnt, mjp.dfile_addr - mjp.cnt, mjp.cnt);
+    switch (mjp.cmd) {
+    case MOD:
+        printf("%02X ", dt);
+        mjp.dfile_addr++;
+        mjp.ofile_addr++;
+        break;
+    case INS:
+        printf("%02X ", dt);
+        mjp.dfile_addr++;
+        break;
+    case DEL:
+        printf("%02X ", dt);
+        val = mjp_parse_oft(&mjp.oft, dt);
+        if (val < 0) {
+            return MJP_ERR_DEL_OFT;
         }
-        mjp.cmd = dt;
+        if (val != 0) {
+            mjp_log_cmd(mjp.cmd, mjp.ofile_addr, mjp.dfile_addr, val);
+            mjp.ofile_addr += val;
+            mjp.cmd = MJP_EOF;
+        }
+        break;
+    case EQL:
+        printf("%02X ", dt);
+        val = mjp_parse_oft(&mjp.oft, dt);
+        if (val < 0) {
+            return MJP_ERR_EQL_OFT;
+        }
+        if (val != 0) {
+            mjp_log_cmd(mjp.cmd, mjp.ofile_addr, mjp.dfile_addr, val);
+            mjp.dfile_addr += val;
+            mjp.ofile_addr += val;
+            mjp.cmd = MJP_EOF;
+        }
+        break;
+    case BKT:
+        printf("%02X ", dt);
+        val = mjp_parse_oft(&mjp.oft, dt);
+        if (val < 0) {
+            return MJP_ERR_BKT_OFT;
+        }
+        if (val != 0) {
+            mjp_log_cmd(mjp.cmd, mjp.ofile_addr, mjp.dfile_addr, val);
+            mjp.ofile_addr -= val;
+            mjp.cmd = MJP_EOF;
+        }
+        break;
+    default:
+        printf("ERROR\n");
+        return MJP_ERR_FORMAT;
+    }
+    mjp.cnt++;
+    return 0;
+}
+
+int mjp_parse(int dt)
+{
+    int ret = 0;
+
+    if ((mjp.cmd == BKT) || (mjp.cmd == EQL) || (mjp.cmd == DEL)) {
+        ret = mjp_parse_feed(dt);
         mjp.last_dt = MJP_EOF;
-        mjp.cnt = 0;
-        mjp.oft.cnt = 0;
-        mjp.oft.max = 0;
-        printf("\n %6d | %s %02X %02X ",
+    } else if (mjp.last_dt == ESC) {
+        if (mjp_is_cmd(dt)) {
+            /* switch to new cmd mode */
+            if ((mjp.cmd == MOD) || (mjp.cmd == INS)) {
+                mjp_log_cmd(mjp.cmd, mjp.ofile_addr - mjp.cnt, mjp.dfile_addr - mjp.cnt, mjp.cnt);
+            }
+            mjp.cmd = dt;
+            mjp.cnt = 0;
+            mjp.oft.cnt = 0;
+            mjp.oft.max = 0;
+            printf("\n %6d | %s %02X %02X ",
                mjp.pfile_addr - 1,
                mjp_str_tab[dt - BKT],
                ESC,
                dt);
-    } else {
-        if ((dt != ESC) || (mjp.last_dt == ESC)) {
-            switch (mjp.cmd) {
-            case MJP_EOF:
-                printf("UNKNONWN PATCH FILE\n");
-                return -1;
-            case MOD:
-                printf("%02X ", dt);
-                mjp.dfile_addr++;
-                mjp.ofile_addr++;
-                break;
-            case INS:
-                printf("%02X ", dt);
-                mjp.dfile_addr++;
-                break;
-            case DEL:
-                printf("%02X ", dt);
-                val = mjp_parse_oft(&mjp.oft, dt);
-                if (val < 0) {
-                    printf("UNSUPPORTED DEL LENGTH\n");
-                }
-                if (val != 0) {
-                    mjp_log_cmd(mjp.cmd, mjp.ofile_addr, mjp.dfile_addr, val);
-                    mjp.ofile_addr += val;
-                }
-                break;
-            case EQL:
-                printf("%02X ", dt);
-                val = mjp_parse_oft(&mjp.oft, dt);
-                if (val < 0) {
-                    printf("UNSUPPORTED EQL LENGTH\n");
-                }
-                if (val != 0) {
-                    mjp_log_cmd(mjp.cmd, mjp.ofile_addr, mjp.dfile_addr, val);
-                    mjp.dfile_addr += val;
-                    mjp.ofile_addr += val;
-                }
-                break;
-            case BKT:
-                printf("%02X ", dt);
-                val = mjp_parse_oft(&mjp.oft, dt);
-                if (val < 0) {
-                    printf("UNSUPPORTED BKT LENGTH\n");
-                }
-                if (val != 0) {
-                    mjp_log_cmd(mjp.cmd, mjp.ofile_addr, mjp.dfile_addr, val);
-                    mjp.ofile_addr -= val;
-                }
-                break;
-            default:
-                printf("ERROR\n");
-                return -1;
+        } else {
+            if (dt == ESC) {
+                ret = mjp_parse_feed(dt);
+                printf("(ESC)(ESC) ");
+            } else {
+                ret = mjp_parse_feed(ESC);
+                printf("(ESC) ");
+                ret = mjp_parse_feed(dt);
             }
-            mjp.cnt++;
-            /* set ch to EOF after ch is processed */
-            dt = MJP_EOF;
+        }
+        mjp.last_dt = MJP_EOF;
+    } else {
+        if (dt != ESC) {
+            ret = mjp_parse_feed(dt);
         }
         mjp.last_dt = dt;
     }
+
     mjp.pfile_addr++;
-    return 0;
+
+    return ret;
 }
 
 int mjp_parse_done(void)
 {
+    if ((mjp.cmd == MOD) || (mjp.cmd == INS)) {
+        mjp_log_cmd(mjp.cmd, mjp.ofile_addr - mjp.cnt, mjp.dfile_addr - mjp.cnt, mjp.cnt);
+    }
     printf("\nPatch file size: %d\n", mjp.pfile_addr);
     printf("Destination file size: %d\n", mjp.dfile_addr);
     printf("Original file size: %d (used)\n", mjp.ofile_addr);
     return 0;
 }
-

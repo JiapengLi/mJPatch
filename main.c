@@ -64,9 +64,9 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    printf("mjp_t size %d, (mjp_dt_t %d)", sizeof(mjp_t), sizeof(mjp_dt_t));
+    printf("mjp_t size %d, (mjp_dt_t %d)\n", sizeof(mjp_t), sizeof(mjp_dt_t));
 
-    /* parse */
+    /* parse to log patch file */
     mjp_start(dfile_wr, ofile_rd, o2d_copy);
     while ((dt = getc(pfile)) != EOF) {
         mjp_parse(dt);
